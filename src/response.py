@@ -6,10 +6,16 @@ from openai import OpenAI
 import torch.nn.functional as F
 import pickle
 
+### 세팅해야 되는 부분!!!
 PICKE_PATH = "/Users/hamin/Downloads/pickle"
+cook_type_list = [i.split(".")[0] for i in os.listdir(PICKE_PATH)]
+cook_type = cook_type_list[0] # 여기에 그냥 밥국떡, 뭐 이런 파일명 넣으면 됨
+with open(os.path.join(PICKE_PATH, f"{cook_type}.pkl"), 'rb') as f:
+    dic_read = pickle.load(f)
+    
 OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
 OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
-cook_type_list = [i.split(".")[0] for i in os.listdir(PICKE_PATH)]
+
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url=OPENAI_BASE_URL
@@ -25,9 +31,6 @@ def get_embeddings(texts, batch_size=100):
         batch_embeddings = [np.array(embedding.embedding) for embedding in response.data]
         embeddings.extend(batch_embeddings)
     return embeddings
-cook_type = cook_type_list[0]
-with open(os.path.join(PICKE_PATH, f"{cook_type}.pkl"), 'rb') as f:
-    dic_read = pickle.load(f)
 
 # 딕셔너리 전처리
 menu_names = []

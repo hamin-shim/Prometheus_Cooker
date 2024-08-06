@@ -19,8 +19,8 @@ const ChatApp = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: message })
             });
-
-            if (!response.ok) {
+            console.log(response)
+            if (!response.status == 200) {
                 throw new Error('Network response was not ok');
             }
 

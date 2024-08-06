@@ -53,29 +53,35 @@ embeddings_np_array = np.array(embeddings)
 # 사용자 입력 문장
 def recommend(query):
     res = []
-    queries = [query]
 
     # 코사인 유사도를 기준으로 입력 문장과 가장 유사한 5개 음식 추출
     top_k = 5
-    for query in queries:
-        query_embedding = get_embeddings([query])[0]
-        query_embedding = torch.tensor(query_embedding)
+    query_embedding = get_embeddings([query])[0]
+    query_embedding = torch.tensor(query_embedding)
 
-        # 코사인 유사도 계산
-        embeddings_tensor = torch.tensor(embeddings_np_array)
-        cos_scores = F.cosine_similarity(query_embedding.unsqueeze(0), embeddings_tensor, dim=1)
+    # 코사인 유사도 계산
+    embeddings_tensor = torch.tensor(embeddings_np_array)
+    cos_scores = F.cosine_similarity(query_embedding.unsqueeze(0), embeddings_tensor, dim=1)
 
-        # 상위 top_k 결과 추출
-        top_results = torch.topk(cos_scores, k=top_k)
+    # 상위 top_k 결과 추출
+    top_results = torch.topk(cos_scores, k=top_k)
 
-        print("\n\n======================\n\n")
-        print("사용자 입력 :", query)
-        print("\nTop 5 음식 추천:")
+    # print("\n\n======================\n\n")
+    # print("사용자 입력 :", query)
+    # print("\nTop 5 음식 추천:")
 
-        for idx in top_results.indices:
-            print(menu_names[idx].strip()," : ",texts[idx].strip(),  "(Score: %.4f)" % (cos_scores[idx].item()))
-            res.append(menu_names[idx].strip())
-    return res
+    # for idx in top_results.indices:
+    #     print(menu_names[idx].strip()," : ",texts[idx].strip(),  "(Score: %.4f)" % (cos_scores[idx].item()))
+    #     res.append(menu_names[idx].strip())
+    results = []
+    for idx in top_results.indices:
+        results.append({
+            'menu': menu_names[idx].strip(),
+            'text': texts[idx].strip(),
+            'score': cos_scores[idx].item()
+        })
+    print(results)
+    return jsonify(results)
 
 app = Flask(__name__)
 CORS(app)
@@ -103,8 +109,8 @@ def chat():
 
     input_text = data['text']
     res = recommend(input_text)
-
-    return jsonify({'prediction': res})
+    print(res)
+    return res
 
 # 서버 상태 체크 엔드포인트
 @app.route('/status', methods=['GET'])
