@@ -5,13 +5,11 @@ import torch
 from openai import OpenAI
 import torch.nn.functional as F
 import pickle
-
 PICKE_PATH = "/Users/hamin/Downloads/pickle"
 SAMPLE_EXCEL_PATH = "./sampled.xlsx"
 OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
 OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
 cook_type_list = [i.split(".")[0] for i in os.listdir(PICKE_PATH)]
-
 
 # OpenAI 클라이언트 설정
 client = OpenAI(

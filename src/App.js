@@ -14,10 +14,10 @@ const ChatApp = () => {
     const fetchBotResponse = async (message) => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/chat', {
+            const response = await fetch('http://127.0.0.1:5500/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input: message })
+                body: JSON.stringify({ text: message })
             });
 
             if (!response.ok) {

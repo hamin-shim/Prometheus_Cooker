@@ -1,12 +1,3 @@
-from flask import Flask, request, jsonify
-import pandas as pd
-import numpy as np
-import torch
-from openai import OpenAI
-import torch.nn.functional as F
-from flask_cors import CORS
-import os
-import pickle
 import os
 import pandas as pd
 import numpy as np
@@ -76,44 +67,3 @@ def recommend(query):
             print(menu_names[idx].strip()," : ",texts[idx].strip(),  "(Score: %.4f)" % (cos_scores[idx].item()))
             res.append(menu_names[idx].strip())
     return res
-
-app = Flask(__name__)
-CORS(app)
-OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
-
-# OpenAI API 설정
-openai_api_key = OPENAI_API_KEY
-openai_api = OpenAI(api_key=openai_api_key)
-
-# 간단한 텍스트 예측 모델 함수 (예시)
-def predict_with_openai_model(input_text):
-    response = openai_api.Completion.create(
-        model="text-davinci-003",
-        prompt=input_text,
-        max_tokens=50
-    )
-    return response.choices[0].text.strip()
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.json
-    print(data)
-    if 'text' not in data:
-        return jsonify({'error': 'No text provided'}), 400
-
-    input_text = data['text']
-    res = recommend(input_text)
-
-    return jsonify({'prediction': res})
-
-# 서버 상태 체크 엔드포인트
-@app.route('/status', methods=['GET'])
-def status():
-    return jsonify({'status': 'running'})
-
-@app.route('/', methods=['GET'])
-def hi():
-    return jsonify({'status': 'Good'})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5500)
