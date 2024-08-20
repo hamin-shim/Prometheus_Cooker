@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import moment from 'moment';
-import './App.css'; // 업데이트된 CSS를 임포트합니다.
+import './App.css';
 
 const ChatApp = () => {
-    const [chatWindows, setChatWindows] = useState([{ id: 1, chats: [], showInfoBoxes: true }]);
+    const [chatWindows, setChatWindows] = useState([{ id: 1, chats: [] }]);
     const [activeWindow, setActiveWindow] = useState(1);
     const [chatContents, setChatContents] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showBackground, setShowBackground] = useState(true);
+    const [chatbotName, setChatbotName] = useState(''); 
+    const [showCategories, setShowCategories] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [dataType, setDataType] = useState('recommendation');
     const chatInput = useRef(null);
 
     const nowTime = moment().format('MM-DD HH:mm:ss');
@@ -17,10 +22,13 @@ const ChatApp = () => {
             const response = await fetch('http://127.0.0.1:5500/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: message })
+                body: JSON.stringify({ 
+                    text: message, 
+                    category: selectedCategory, 
+                    type: dataType
+                })
             });
-            console.log(response)
-            if (!response.status == 200) {
+            if (response.status !== 200) {
                 throw new Error('Network response was not ok');
             }
 
@@ -30,26 +38,16 @@ const ChatApp = () => {
             console.error('Error:', error);
             return [];
         } finally {
-            setIsLoading(false); 
+            setIsLoading(false);
         }
     };
 
-    const handleAddChat = async (message, isBot = false) => {
-        // 메시지가 추가될 때 상태 업데이트
+    const handleAddChat = async (message, isBot = false, botResponses = []) => {
+        setShowBackground(false);
         setChatWindows(prev => {
             const currentWindow = prev.find(window => window.id === activeWindow);
             const updatedChats = [...currentWindow.chats, { no: currentWindow.chats.length + 1, chat: message, date: nowTime, isBot }];
-    
-            if (!isBot) {
-                // 사용자의 메시지를 추가하고 봇의 응답을 받음
-                return prev.map(window =>
-                    window.id === activeWindow
-                        ? { ...window, chats: updatedChats, showInfoBoxes: false }
-                        : window
-                );
-            }
-    
-            // 봇의 응답이 있는 경우
+         
             return prev.map(window =>
                 window.id === activeWindow
                     ? { ...window, chats: updatedChats }
@@ -57,89 +55,172 @@ const ChatApp = () => {
             );
         });
     
-        if (!isBot) {
-            // 봇의 응답을 처리
-            const botResponses = await fetchBotResponse(message);
-            const botMessages = botResponses.map((item, index) => ({
-                chat: `${item.menu} : ${item.text} (Score: ${item.score.toFixed(4)})`,
-                date: nowTime,
-                isBot: true
-            }));
-    
-            setChatWindows(prev =>
-                prev.map(window =>
-                    window.id === activeWindow
-                        ? { ...window, chats: [...prev.find(window => window.id === activeWindow).chats, ...botMessages] }
-                        : window
-                )
-            );
+        if (!isBot && botResponses.length === 0) {
+            const responses = await fetchBotResponse(message);
+            handleAddChat('이런 메뉴는 어떠세요?', true, responses);
+            handleAddChat("이중에서 칼로리가 궁금한 메뉴가 있다면 클릭해주세요!", true);
+        } else if (botResponses.length > 0) {
+            botResponses.forEach((item, index) => {
+                setChatWindows(prev =>
+                    prev.map(window =>
+                        window.id === activeWindow
+                            ? { 
+                                ...window, 
+                                chats: [
+                                    ...prev.find(window => window.id === activeWindow).chats, 
+                                    {
+                                        no: window.chats.length + 1 + index, 
+                                        chat: (
+                                            <span onClick={() => handleCalorieClick(item)}>
+                                                {`${item.menu} : ${item.text} (Score: ${item.score.toFixed(4)})`}
+                                            </span>
+                                        ),
+                                        date: nowTime,
+                                        isBot: true
+                                    }
+                                ] 
+                            }
+                            : window
+                    )
+                );
+            });
         }
     };
-    
-    
+
+    const handleCalorieClick = (item) => {
+        handleAddChat(`${item.menu}의 칼로리는 ${item.calorie}입니다.`, true);
+    };
+
     const pressEnter = (e) => {
         if (e.key === 'Enter' && chatContents.trim() !== '') {
-            e.preventDefault();  // Enter 키 기본 동작 방지
+            e.preventDefault();
             handleAddChat(chatContents);
         }
     };
 
     const addNewChatWindow = () => {
         const newId = chatWindows.length + 1;
-        setChatWindows([...chatWindows, { id: newId, chats: [], showInfoBoxes: true }]);
+        setChatWindows([...chatWindows, { id: newId, chats: [] }]);
         setActiveWindow(newId);
+        setShowBackground(true);
+        setChatbotName(''); 
+        setShowCategories(false);
     };
 
-    const handleBoxClick = (message) => {
+    const handleInfoBoxClick = (message, botName, type) => { 
+        setShowBackground(false);
+        setChatbotName(botName); 
+        setDataType(type); 
         handleAddChat(message, true);
+        if (botName === '메뉴 추천 봇' || botName === '칼로리 계산 봇') {
+            setShowCategories(true); 
+        }
+    };
+
+    const handleCategoryClick = (category) => {
+        setSelectedCategory(category);
+        setShowCategories(false); 
+        const message = (
+            <span>
+                {`${category} 카테고리를 선택하셨네요`}
+                <br />
+                <br />
+                {"오늘은 어떤 음식이 땡기시나요?"}
+                <br />
+                <br />
+                <span style={{ color: 'gray' }}>
+                    {"ex ) 오늘 날씨가 추워서 뜨거운 음식이 먹고 싶어"}
+                </span>
+            </span>
+        );
+        handleAddChat(message, true); 
     };
 
     useEffect(() => {
-        // `currentChats` 정의
-        const currentWindow = chatWindows.find(window => window.id === activeWindow);
-        const currentChats = currentWindow?.chats || [];
-
-        // 채팅창을 아래로 스크롤
         scrollToBottom();
-    }, [chatWindows, activeWindow]); // `chatWindows`와 `activeWindow`가 변경될 때 호출
+        
+    }, [chatWindows, activeWindow]);
 
     const scrollToBottom = () => {
         const { scrollHeight, clientHeight } = chatInput.current;
         chatInput.current.scrollTop = scrollHeight - clientHeight;
     };
 
-    // 현재 활성화된 채팅창
     const currentWindow = chatWindows.find(window => window.id === activeWindow);
     const currentChats = currentWindow?.chats || [];
-    const showInfoBoxes = currentWindow?.showInfoBoxes;
 
     return (
         <div className="ChatWrapper">
-            <div className="sidebar">
+            <div className="sidebar">  
                 {chatWindows.map(window => (
                     <div 
                         key={window.id} 
                         className={`chatWindowButton ${window.id === activeWindow ? 'active' : ''}`}
                         onClick={() => setActiveWindow(window.id)}
                     >
-                        채팅창 {window.id}
+                        chat {window.id}
                     </div>
                 ))}
-                <button onClick={addNewChatWindow} className="newChatButton">새 채팅창</button>
+                <button onClick={addNewChatWindow} className="newChatButton"> + 새 채팅 시작하기 </button>
             </div>
             <div className="chatContainer">
-                {showInfoBoxes && (
+                {showBackground && (
+                    <div className="chatBackground">
+                        <img src="/img/main_img.png" alt="Chatbot logo" className="chatbotLogo" />
+                        <p className="chatbotText">식단 추천 챗봇<br /><strong>오늘 뭐 먹지</strong>입니다</p>
+                    </div>
+                )}
+                {showBackground && (
                     <div className="infoBoxes">
-                        <div className="infoBox" onClick={() => handleBoxClick('밥 추천하는 챗봇입니다.')}>밥 추천</div>
-                        <div className="infoBox" onClick={() => handleBoxClick('칼로리 계산하는 챗봇입니다.')}>칼로리 계산</div>
-                        <div className="infoBox" onClick={() => handleBoxClick('체중 조절 기간을 알려주는 챗봇입니다.')}>체중 조절 기간</div>
+                        <div 
+                            className="infoBox" 
+                            onClick={() => handleInfoBoxClick("안녕하세요! 메뉴 추천 봇입니다. \n 카테고리를 선택하면 메뉴 추천을 도와드릴게요!", "메뉴 추천 봇", "recommendation")}
+                        >
+                            🍽️ <br /> 메뉴 추천받기
+                        </div>
+                        <div 
+                            className="infoBox" 
+                            onClick={() => handleInfoBoxClick("안녕하세요! 칼로리 계산 봇입니다. 카테고리를 선택하면 메뉴 추천 및 칼로리를 계산해드려요!", "칼로리 계산 봇", "calorie")}
+                        >
+                            🥗 <br /> 칼로리 계산하기
+                        </div>
+                        <div 
+                            className="infoBox" 
+                            onClick={() => handleInfoBoxClick("안녕하세요! 체중 조절 봇입니다. 현재 스펙을 알려주시면 체중 조절 기간을 알려드릴게요!", "체중 조절 챗봇", "weight_control")}
+                        >
+                            🔍 <br /> 체중 조절 기간 알아보기
+                        </div>
+                        
                     </div>
                 )}
                 <div className="chatList" ref={chatInput}>
-                    {currentChats.map((item) => (
-                        <div className={`chatContents ${item.isBot ? 'bot' : 'user'}`} key={item.no}>
-                            <span className="chat">{item.chat}</span>
-                            <span className="date">{item.date}</span>
+                    {currentChats.map((item, index) => (
+                        <div key={item.no}>
+                            {item.isBot && (
+                                <div className="chatbotName">
+                                    <strong>{chatbotName}</strong>
+                                </div>
+                            )}
+                            <div className={`chatContents ${item.isBot ? 'bot' : 'user'}`}>
+                                {item.isBot && (
+                                    <img src="/img/chatbot.png" alt="Chatbot" className="chatbotAvatar" />
+                                )}
+                                <span className="chat">{item.chat}</span>
+                                <span className="date">{item.date}</span>
+                            </div>
+                            {index === currentChats.length - 1 && showCategories && (
+                                <div className="categoryButtons">
+                                    {["국물의 맛", "일품의 맛", "설탕의 맛", "밀의 맛", "쌀의 맛", "야채의 맛", "독특한 맛"].map(category => (
+                                        <button
+                                            key={category}
+                                            className="categoryButton"
+                                            onClick={() => handleCategoryClick(category)}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
                     {isLoading && <div className="chatContents bot"><span className="chat">...</span></div>}
