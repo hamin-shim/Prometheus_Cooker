@@ -7,22 +7,16 @@ import torch.nn.functional as F
 from flask_cors import CORS
 import os
 import pickle
-import os
-import pandas as pd
-import numpy as np
-import torch
-from openai import OpenAI
-import torch.nn.functional as F
-import pickle
 
-PICKE_PATH = "/Users/hamin/Downloads/pickle"
+PICKE_PATH = "/Users/gamjawon/Desktop/Prometheus_Cooker/pickle"
+EXCEL_PATH = "/Users/gamjawon/Desktop/Prometheus_Cooker/excel"
 OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
 OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
-cook_type_list = [i.split(".")[0] for i in os.listdir(PICKE_PATH)]
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url=OPENAI_BASE_URL
 )
+
 def get_embeddings(texts, batch_size=100):
     embeddings = []
     for i in range(0, len(texts), batch_size):
@@ -34,85 +28,93 @@ def get_embeddings(texts, batch_size=100):
         batch_embeddings = [np.array(embedding.embedding) for embedding in response.data]
         embeddings.extend(batch_embeddings)
     return embeddings
-cook_type = cook_type_list[0]
-with open(os.path.join(PICKE_PATH, f"{cook_type}.pkl"), 'rb') as f:
-    dic_read = pickle.load(f)
 
-# 딕셔너리 전처리
-menu_names = []
-embeddings = []
-texts = []
+def load_dataset(file_path):
+    if file_path.endswith(".pkl"):
+        with open(file_path, 'rb') as f:
+            data = pickle.load(f)
+    elif file_path.endswith(".xlsx"):
+        data = pd.read_excel(file_path).to_dict(orient='list')
+    else:
+        raise ValueError("Unsupported file format")
+    return data
 
-for key, value in dic_read.items():
-    menu_names.append(key)
-    embeddings.append(value[0])
-    texts.append(value[1])
+def prepare_data_for_recommendation(data):
+    menu_names = []
+    embeddings = []
+    texts = []
 
-embeddings_np_array = np.array(embeddings)
+    for key, value in data.items():
+        menu_names.append(key)
+        try:
+            # Ensure that embeddings are numeric and can be converted to a numpy array
+            embedding = np.array(value[0], dtype=np.float32)
+        except ValueError:
+            print(f"Problematic data for {key}: {value[0]}")
+            raise ValueError(f"Embedding for {key} contains non-numeric data.")
+        embeddings.append(embedding)
+        texts.append(value[1])
 
-# 사용자 입력 문장
-def recommend(query):
+    return menu_names, np.array(embeddings), texts
+
+def recommend(query, data, data_type):
     res = []
 
-    # 코사인 유사도를 기준으로 입력 문장과 가장 유사한 5개 음식 추출
+    if data_type == 'recommendation':
+        # 데이터가 이미 임베딩된 벡터로 되어 있는 경우
+        menu_names, embeddings_np_array, texts = prepare_data_for_recommendation(data)
+    elif data_type == 'calorie':
+        # 텍스트 데이터를 기반으로 임베딩 벡터 생성
+        menu_names = data['CKG_NM']
+        texts = data['CKG_IPDC']
+        embeddings_np_array = np.array(get_embeddings(texts))  # 텍스트를 임베딩 벡터로 변환
+    else:
+        raise ValueError("Unsupported data type")
+
     top_k = 5
     query_embedding = get_embeddings([query])[0]
     query_embedding = torch.tensor(query_embedding)
 
-    # 코사인 유사도 계산
-    embeddings_tensor = torch.tensor(embeddings_np_array)
+    embeddings_tensor = torch.tensor(embeddings_np_array, dtype=torch.float32)
     cos_scores = F.cosine_similarity(query_embedding.unsqueeze(0), embeddings_tensor, dim=1)
 
-    # 상위 top_k 결과 추출
     top_results = torch.topk(cos_scores, k=top_k)
 
-    # print("\n\n======================\n\n")
-    # print("사용자 입력 :", query)
-    # print("\nTop 5 음식 추천:")
-
-    # for idx in top_results.indices:
-    #     print(menu_names[idx].strip()," : ",texts[idx].strip(),  "(Score: %.4f)" % (cos_scores[idx].item()))
-    #     res.append(menu_names[idx].strip())
-    results = []
+    results = [] 
     for idx in top_results.indices:
         results.append({
             'menu': menu_names[idx].strip(),
             'text': texts[idx].strip(),
             'score': cos_scores[idx].item()
-        })
-    print(results)
+        })  
     return jsonify(results)
+
 
 app = Flask(__name__)
 CORS(app)
-OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
-
-# OpenAI API 설정
-openai_api_key = OPENAI_API_KEY
-openai_api = OpenAI(api_key=openai_api_key)
-
-# 간단한 텍스트 예측 모델 함수 (예시)
-def predict_with_openai_model(input_text):
-    response = openai_api.Completion.create(
-        model="text-davinci-003",
-        prompt=input_text,
-        max_tokens=50
-    )
-    return response.choices[0].text.strip()
 
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    print(data)
-    if 'text' not in data:
-        return jsonify({'error': 'No text provided'}), 400
+    if 'text' not in data or 'category' not in data or 'type' not in data:
+        return jsonify({'error': 'Missing parameters'}), 400
 
     input_text = data['text']
-    res = recommend(input_text)
+    category = data['category']
+    data_type = data['type']
+
+    if data_type == "recommendation":
+        file_path = os.path.join(PICKE_PATH, f"{category}.pkl")
+    elif data_type == "calorie":
+        file_path = os.path.join(EXCEL_PATH, f"{category}.xlsx")
+    else:
+        return jsonify({'error': 'Invalid data type'}), 400
+
+    dataset = load_dataset(file_path)
+    res = recommend(input_text, dataset, data_type)
     print(res)
     return res
 
-# 서버 상태 체크 엔드포인트
 @app.route('/status', methods=['GET'])
 def status():
     return jsonify({'status': 'running'})
