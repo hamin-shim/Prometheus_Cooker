@@ -12,6 +12,7 @@ const ChatApp = () => {
     const [showCategories, setShowCategories] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
     const [dataType, setDataType] = useState('recommendation');
+    const [userInfo, setUserInfo] = useState('');
     const chatInput = useRef(null);
 
     const nowTime = moment().format('MM-DD HH:mm:ss');
@@ -25,7 +26,8 @@ const ChatApp = () => {
                 body: JSON.stringify({ 
                     text: message, 
                     category: selectedCategory, 
-                    type: dataType
+                    type: dataType,
+                    userInfo: userInfo
                 })
             });
             if (response.status !== 200) {
@@ -33,6 +35,8 @@ const ChatApp = () => {
             }
 
             const data = await response.json();
+            console.log(data);
+            
             return data;
         } catch (error) {
             console.error('Error:', error);
@@ -57,8 +61,36 @@ const ChatApp = () => {
     
         if (!isBot && botResponses.length === 0) {
             const responses = await fetchBotResponse(message);
-            handleAddChat('이런 메뉴는 어떠세요?', true, responses);
-            handleAddChat("이중에서 칼로리가 궁금한 메뉴가 있다면 클릭해주세요!", true);
+            if(responses['type']==='weight'){
+                if(responses['result'] === 'wrong') {
+                    handleAddChat('형식이 잘못되었나봐요. 다시 시도해보세요', true)
+                }
+                else{
+                    handleAddChat("1: 매우 적음 (거의 운동하지 않음)\n2: 가벼운 활동 (주 1-3회 가벼운 운동)\n3: 보통 활동 (주 3-5회 보통 운동)\n4: 활동적 (주 6-7회 강도 높은 운동)\n5: 매우 활동적 (매우 강도 높은 운동, 육체 노동", true)
+                    setDataType('weight_control_activation')
+                    setUserInfo(responses['text'])
+                }
+            }
+            else if(responses['type']==='weight_2'){
+                if(responses['result'] === 'wrong') {
+                    handleAddChat('형식이 잘못되었나봐요. 다시 시도해보세요', true)
+                }
+                else{
+                    handleAddChat("...", true)
+                }
+            }
+            else if(responses['type']==='weight_finish'){
+                responses['message'].map(e=>{
+                    console.log(e);
+                    handleAddChat(e, true)
+                })
+                handleAddChat('안녕하세요! 체중 조절 봇입니다. 현재 상태와 목표를 알려주시면 체중 조절 기간을 알려드릴게요! 키/현재 몸무게/성별/나이/목표몸무게를 알려주세요. Ex) 175/75/남/30/70', true)
+                setDataType('weight_control')
+            }
+            else{   
+                handleAddChat('이런 메뉴는 어떠세요?', true, responses);
+                handleAddChat("이중에서 칼로리가 궁금한 메뉴가 있다면 클릭해주세요!", true);
+            }
         } else if (botResponses.length > 0) {
             botResponses.forEach((item, index) => {
                 setChatWindows(prev =>
@@ -88,6 +120,7 @@ const ChatApp = () => {
     };
 
     const handleCalorieClick = (item) => {
+        console.log(item);
         handleAddChat(`${item.menu}의 칼로리는 ${item.calorie}입니다.`, true);
     };
 
@@ -95,6 +128,7 @@ const ChatApp = () => {
         if (e.key === 'Enter' && chatContents.trim() !== '') {
             e.preventDefault();
             handleAddChat(chatContents);
+            setChatContents('')
         }
     };
 
@@ -186,7 +220,7 @@ const ChatApp = () => {
                         </div>
                         <div 
                             className="infoBox" 
-                            onClick={() => handleInfoBoxClick("안녕하세요! 체중 조절 봇입니다. 현재 스펙을 알려주시면 체중 조절 기간을 알려드릴게요!", "체중 조절 챗봇", "weight_control")}
+                            onClick={() => handleInfoBoxClick("안녕하세요! 체중 조절 봇입니다. 현재 상태와 목표를 알려주시면 체중 조절 기간을 알려드릴게요! 키/현재 몸무게/성별/나이/목표몸무게를 알려주세요. Ex) 175/75/남/30/70", "체중 조절 챗봇", "weight_control")}
                         >
                             🔍 <br /> 체중 조절 기간 알아보기
                         </div>
@@ -235,6 +269,7 @@ const ChatApp = () => {
                     <button onClick={() => {
                         if (chatContents.trim() !== '') {
                             handleAddChat(chatContents);
+                            setChatContents('')
                         }
                     }}>전송</button>
                 </div>

@@ -7,11 +7,22 @@ import torch.nn.functional as F
 from flask_cors import CORS
 import os
 import pickle
+from dotenv import load_dotenv
+import os 
+import re
+from cal import calculate_bmr, calculate_tdee, calculate_calorie_deficit, calculate_diet_duration
 
-PICKE_PATH = "/Users/gamjawon/Desktop/Prometheus_Cooker/pickle"
-EXCEL_PATH = "/Users/gamjawon/Desktop/Prometheus_Cooker/excel"
-OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
-OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
+# load .env
+load_dotenv()
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+OPENAI_BASE_URL = os.environ.get('OPENAI_BASE_URL')
+# PICKE_PATH = os.environ.get('PICKE_PATH')
+PICKE_PATH = "../pickles"
+print(OPENAI_API_KEY)
+print(PICKE_PATH)
+
+
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url=OPENAI_BASE_URL
@@ -30,6 +41,7 @@ def get_embeddings(texts, batch_size=100):
     return embeddings
 
 def load_dataset(file_path):
+    print(file_path)
     if file_path.endswith(".pkl"):
         with open(file_path, 'rb') as f:
             data = pickle.load(f)
@@ -43,7 +55,6 @@ def prepare_data_for_recommendation(data):
     menu_names = []
     embeddings = []
     texts = []
-
     for key, value in data.items():
         menu_names.append(key)
         try:
@@ -56,6 +67,46 @@ def prepare_data_for_recommendation(data):
         texts.append(value[1])
 
     return menu_names, np.array(embeddings), texts
+
+def validate_input(user_input):
+    # 정규 표현식 패턴
+    pattern = r"^\d{2,3}/\d{2,3}/(남|여)/\d{1,2}/\d{2,3}$"
+    
+    # 입력값이 패턴과 일치하는지 확인
+    if re.match(pattern, user_input):
+        return True
+    else:
+        return False
+    
+def validate_range(input_value):
+    try:
+        # 입력값을 정수로 변환 시도
+        value = int(input_value)
+        
+        # 변환된 값이 1에서 5 사이인지 확인
+        if 1 <= value <= 5:
+            return True
+        else:
+            return False
+    except ValueError:
+        # 변환이 불가능한 경우 (예: 입력값이 숫자가 아님)
+        return False
+    
+def find_duration(user_info):
+    results = []
+    height, weight, gender, age, target_weight, activity_level = user_info.split('/')
+    bmr = calculate_bmr(int(weight), int(height), int(age), gender.strip())
+    tdee = calculate_tdee(bmr, int(activity_level))
+
+    weight_loss = int(weight) - int(target_weight)
+    calorie_deficit = calculate_calorie_deficit(weight_loss)
+
+    diet_duration_days = calculate_diet_duration(calorie_deficit, tdee)
+    results.append(f"\n당신의 기초대사량은 {bmr:.2f} kcal/day 입니다.")
+    results.append(f"당신의 활동대사량은 {tdee:.2f} kcal/day 입니다.")
+    results.append(f"감량해야 하는 칼로리는 총 {calorie_deficit:.2f} kcal 입니다.")
+    results.append(f"예상 다이어트 기간은 약 {int(diet_duration_days)} 일입니다.")
+    return results
 
 def recommend(query, data, data_type):
     res = []
@@ -87,7 +138,7 @@ def recommend(query, data, data_type):
             'text': texts[idx].strip(),
             'score': cos_scores[idx].item()
         })  
-    return jsonify(results)
+    return results
 
 
 app = Flask(__name__)
@@ -96,17 +147,30 @@ CORS(app)
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
+    print(data)
     if 'text' not in data or 'category' not in data or 'type' not in data:
         return jsonify({'error': 'Missing parameters'}), 400
 
     input_text = data['text']
     category = data['category']
+    if category == "": category = '쌀의 맛'
     data_type = data['type']
 
     if data_type == "recommendation":
         file_path = os.path.join(PICKE_PATH, f"{category}.pkl")
-    elif data_type == "calorie":
-        file_path = os.path.join(EXCEL_PATH, f"{category}.xlsx")
+    # elif data_type == "calorie":
+    #     file_path = os.path.join(EXCEL_PATH, f"{category}.xlsx")
+    elif data_type == "weight_control":
+        if(validate_input(input_text)):
+            return jsonify({'type': 'weight', 'result': "pass", 'text':input_text})
+        else: 
+            return jsonify({'type': 'weight', 'result': "wrong"})
+    elif data_type=='weight_control_activation':
+        if(validate_range(input_text)):
+            res = find_duration(f"{data['userInfo']}/{input_text}")
+            return jsonify({'type': 'weight_finish', 'message': res})
+        else: 
+            return jsonify({'type': 'weight_2', 'result': "wrong"})
     else:
         return jsonify({'error': 'Invalid data type'}), 400
 
