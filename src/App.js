@@ -7,9 +7,9 @@ const ChatApp = () => {
     const [activeWindow, setActiveWindow] = useState(1);
     const [chatContents, setChatContents] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [showBackground, setShowBackground] = useState(true);
-    const [chatbotName, setChatbotName] = useState(''); 
-    const [showCategories, setShowCategories] = useState(false);
+    const [backgroundStatus, setBackgroundStatus] = useState({ 1: true });
+    const [chatbotNames, setChatbotNames] = useState({ 1: '' });
+    const [categoriesStatus, setCategoriesStatus] = useState({ 1: false });
     const [selectedCategory, setSelectedCategory] = useState('');
     const [dataType, setDataType] = useState('recommendation');
     const chatInput = useRef(null);
@@ -43,7 +43,7 @@ const ChatApp = () => {
     };
 
     const handleAddChat = async (message, isBot = false, botResponses = []) => {
-        setShowBackground(false);
+        setBackgroundStatus(prev => ({ ...prev, [activeWindow]: false }));
         setChatWindows(prev => {
             const currentWindow = prev.find(window => window.id === activeWindow);
             const updatedChats = [...currentWindow.chats, { no: currentWindow.chats.length + 1, chat: message, date: nowTime, isBot }];
@@ -102,24 +102,24 @@ const ChatApp = () => {
         const newId = chatWindows.length + 1;
         setChatWindows([...chatWindows, { id: newId, chats: [] }]);
         setActiveWindow(newId);
-        setShowBackground(true);
-        setChatbotName(''); 
-        setShowCategories(false);
+        setBackgroundStatus(prev => ({ ...prev, [newId]: true }));
+        setChatbotNames(prev => ({ ...prev, [newId]: '' }));
+        setCategoriesStatus(prev => ({ ...prev, [newId]: false }));
     };
 
     const handleInfoBoxClick = (message, botName, type) => { 
-        setShowBackground(false);
-        setChatbotName(botName); 
+        setBackgroundStatus(prev => ({ ...prev, [activeWindow]: false }));
+        setChatbotNames(prev => ({ ...prev, [activeWindow]: botName }));
         setDataType(type); 
         handleAddChat(message, true);
         if (botName === '메뉴 추천 봇' || botName === '칼로리 계산 봇') {
-            setShowCategories(true); 
+            setCategoriesStatus(prev => ({ ...prev, [activeWindow]: true }));
         }
     };
 
     const handleCategoryClick = (category) => {
         setSelectedCategory(category);
-        setShowCategories(false); 
+        setCategoriesStatus(prev => ({ ...prev, [activeWindow]: false }));
         const message = (
             <span>
                 {`${category} 카테고리를 선택하셨네요`}
@@ -164,13 +164,13 @@ const ChatApp = () => {
                 <button onClick={addNewChatWindow} className="newChatButton"> + 새 채팅 시작하기 </button>
             </div>
             <div className="chatContainer">
-                {showBackground && (
+                {backgroundStatus[activeWindow] && (
                     <div className="chatBackground">
                         <img src="/img/main_img.png" alt="Chatbot logo" className="chatbotLogo" />
                         <p className="chatbotText">식단 추천 챗봇<br /><strong>오늘 뭐 먹지</strong>입니다</p>
                     </div>
                 )}
-                {showBackground && (
+                {backgroundStatus[activeWindow] && (
                     <div className="infoBoxes">
                         <div 
                             className="infoBox" 
@@ -190,7 +190,6 @@ const ChatApp = () => {
                         >
                             🔍 <br /> 체중 조절 기간 알아보기
                         </div>
-                        
                     </div>
                 )}
                 <div className="chatList" ref={chatInput}>
@@ -198,7 +197,7 @@ const ChatApp = () => {
                         <div key={item.no}>
                             {item.isBot && (
                                 <div className="chatbotName">
-                                    <strong>{chatbotName}</strong>
+                                    <strong>{chatbotNames[activeWindow]}</strong>
                                 </div>
                             )}
                             <div className={`chatContents ${item.isBot ? 'bot' : 'user'}`}>
@@ -208,7 +207,7 @@ const ChatApp = () => {
                                 <span className="chat">{item.chat}</span>
                                 <span className="date">{item.date}</span>
                             </div>
-                            {index === currentChats.length - 1 && showCategories && (
+                            {index === currentChats.length - 1 && categoriesStatus[activeWindow] && (
                                 <div className="categoryButtons">
                                     {["국물의 맛", "일품의 맛", "설탕의 맛", "밀의 맛", "쌀의 맛", "야채의 맛", "독특한 맛"].map(category => (
                                         <button
