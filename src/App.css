@@ -27,10 +27,28 @@ body {
   text-align: center;
   cursor: pointer;
   border-radius: 5px;
+  position: relative;
 }
 
 .chatWindowButton.active {
   background-color: #aeadad;
+}
+
+.chatWindowButton .deleteButton {
+  display: none;
+  background: none;
+  border: none;
+  color: red;
+  font-size: 12px;
+  cursor: pointer;
+  position: absolute;
+  right: 10px; /* 버튼을 오른쪽 끝으로 위치 */
+  top: 50%;
+  transform: translateY(-50%); /* 수직으로 가운데 정렬 */
+}
+
+.chatWindowButton:hover .deleteButton {
+  display: inline-block;
 }
 
 .newChatButton {
@@ -109,7 +127,7 @@ body {
   overflow-y: auto;
   padding: 20px;
   background-color: #f9f9f9;
-  margin-bottom: 100px;
+  margin-bottom: 40px;
   z-index: 5;
 }
 
@@ -144,7 +162,6 @@ body {
   height: 40px;
   border-radius: 50%; /* 원형 이미지로 만들기 */
 }
-
 
 .chatContents.user {
   justify-content: flex-end;
@@ -214,4 +231,3 @@ body {
   background-color: #f0f0f0; /* 호버 시 배경색을 약간 어둡게 */
   color: black; /* 호버 시 텍스트 색상 유지 */
 }
-

@@ -87,9 +87,13 @@ const ChatApp = () => {
                 handleAddChat('안녕하세요! 체중 조절 봇입니다. 현재 상태와 목표를 알려주시면 체중 조절 기간을 알려드릴게요! 키/현재 몸무게/성별/나이/목표몸무게를 알려주세요. Ex) 175/75/남/30/70', true)
                 setDataType('weight_control')
             }
-            else{   
+            else if (dataType === 'recommendation') {
                 handleAddChat('이런 메뉴는 어떠세요?', true, responses);
-                handleAddChat("이중에서 칼로리가 궁금한 메뉴가 있다면 클릭해주세요!", true);
+                handleAddChat("메뉴를 선택하면 더 많은 정보를 제공할게요!", true);
+            } 
+            else if (dataType === 'calorie') {
+                handleAddChat('이런 메뉴는 어떠세요?', true, responses);
+                handleAddChat("이 중에서 칼로리가 궁금한 메뉴가 있다면 클릭해주세요!", true);
             }
         } else if (botResponses.length > 0) {
             botResponses.forEach((item, index) => {
@@ -103,7 +107,7 @@ const ChatApp = () => {
                                     {
                                         no: window.chats.length + 1 + index, 
                                         chat: (
-                                            <span onClick={() => handleCalorieClick(item)}>
+                                            <span onClick={() => handleMenuClick(item)}>
                                                 {`${item.menu} : ${item.text} (Score: ${item.score.toFixed(4)})`}
                                             </span>
                                         ),
@@ -119,9 +123,13 @@ const ChatApp = () => {
         }
     };
 
-    const handleCalorieClick = (item) => {
-        console.log(item);
-        handleAddChat(`${item.menu}의 칼로리는 ${item.calorie}입니다.`, true);
+    const handleMenuClick = (item) => {
+        if (dataType === 'calorie') {
+            const responseMessage = item.message;
+            handleAddChat(responseMessage, true);
+        } else {
+            handleAddChat(`${item.menu}를 선택하셨습니다. 더 궁금한 점이 있으면 말씀해주세요!`, true);
+        }
     };
 
     const pressEnter = (e) => {
