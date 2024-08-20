@@ -117,6 +117,17 @@ const ChatApp = () => {
         setShowCategories(false);
     };
 
+    const handleWindowSwitch = (windowId) => {
+        setActiveWindow(windowId);
+        const currentWindow = chatWindows.find(window => window.id === windowId);
+        // 채팅이 없으면 배경을 보여주고, 채팅이 있으면 배경을 숨깁니다.
+        if (currentWindow.chats.length === 0) {
+            setShowBackground(true);
+        } else {
+            setShowBackground(false);
+        }
+    };
+
     const handleInfoBoxClick = (message, botName, type) => { 
         setShowBackground(false);
         setChatbotName(botName); 
@@ -147,6 +158,12 @@ const ChatApp = () => {
     };
 
     useEffect(() => {
+        const currentWindow = chatWindows.find(window => window.id === activeWindow);
+        if (currentWindow.chats.length === 0) {
+            setShowBackground(true);
+        } else {
+            setShowBackground(false);
+        }
         scrollToBottom();
         
     }, [chatWindows, activeWindow]);
@@ -166,7 +183,7 @@ const ChatApp = () => {
                     <div 
                         key={window.id} 
                         className={`chatWindowButton ${window.id === activeWindow ? 'active' : ''}`}
-                        onClick={() => setActiveWindow(window.id)}
+                        onClick={() => handleWindowSwitch(window.id)}
                     >
                         chat {window.id}
                     </div>

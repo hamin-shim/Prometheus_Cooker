@@ -83,13 +83,16 @@ body {
 }
 
 .chatbotLogo {
-  width: 200px;
-  height: 200px;
+  width: 300px;
+  height: 300px;
+  position: absolute; /* 또는 fixed */
+  top: -200px;
+  left: -40px;
 }
 
 .chatbotText {
   font-size: 1.5em;
-  margin-top: 20px;
+  margin-top: 100px;
   color: #333;
 }
 
