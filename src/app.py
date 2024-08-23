@@ -71,6 +71,11 @@ def prepare_data_for_recommendation(data):
             except:
                 nutrient_info = {}  # 변환 실패 시 빈 딕셔너리로 대체
         nutrients.append(nutrient_info)
+        # servings 정보 저장
+        serving_info = value[4] if not (isinstance(value[4], float) and math.isnan(value[4])) else None
+        servings.append(serving_info)
+        
+    return menu_names, np.array(embeddings), texts, nutrients, servings
 
 def validate_input(user_input):
     # 정규 표현식 패턴
@@ -111,14 +116,6 @@ def find_duration(user_info):
     results.append(f"감량해야 하는 칼로리는 총 {calorie_deficit:.2f} kcal 입니다.")
     results.append(f"예상 다이어트 기간은 약 {int(diet_duration_days)} 일입니다.")
     return results
-
-def recommend(query, data, data_type):
-    res = []
-        serving_info = value[4] if not (isinstance(value[4], float) and math.isnan(value[4])) else None
-        servings.append(serving_info)
-
-    return menu_names, np.array(embeddings), texts, nutrients, servings
-
 
 def recommend(query, data):
     menu_names, embeddings_np_array, texts, nutrients, servings = prepare_data_for_recommendation(data)
