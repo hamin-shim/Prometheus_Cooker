@@ -8,10 +8,13 @@ from flask_cors import CORS
 import os
 import pickle
 import math
+from dotenv import load_dotenv
 
-PICKE_PATH = "/Users/gamjawon/Desktop/Prometheus_Cooker/pickle"
-OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
-OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
+load_dotenv()
+
+PICKE_PATH = os.getenv('PICKE_PATH')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     base_url=OPENAI_BASE_URL
