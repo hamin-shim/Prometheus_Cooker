@@ -77,7 +77,7 @@ const ChatApp = () => {
                                         no: window.chats.length + 1 + index, 
                                         chat: (
                                             <span onClick={() => handleMenuClick(item)}>
-                                                {`${item.menu} : ${item.text} (Score: ${item.score.toFixed(4)})`}
+                                                {`${item.menu} : ${item.text}`}
                                             </span>
                                         ),
                                         date: nowTime,
