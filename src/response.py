@@ -13,7 +13,7 @@ cook_type = cook_type_list[0] # 여기에 그냥 밥국떡, 뭐 이런 파일명
 with open(os.path.join(PICKE_PATH, f"{cook_type}.pkl"), 'rb') as f:
     dic_read = pickle.load(f)
     
-OPENAI_API_KEY = "up_bsQetBVyFTYszX7zw1tOHrU0RC9bm"
+OPENAI_API_KEY = ""
 OPENAI_BASE_URL = "https://api.upstage.ai/v1/solar"
 
 client = OpenAI(
