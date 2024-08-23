@@ -95,7 +95,6 @@ def recommend(query, data):
             'text': texts[idx].strip(),
             'nutrients': nutrient_info,
             'serving': serving_info,
-            'score': cos_scores[idx].item(),
             'message': message  # 생성된 메시지를 추가
         })  
     return jsonify(results)
